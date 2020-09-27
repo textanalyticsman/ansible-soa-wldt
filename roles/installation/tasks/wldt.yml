@@ -1,0 +1,40 @@
+  - name: Getting configuration to install Weblogic Deploy Tooling
+    set_fact:
+      # Even though each expression returns just one value. I used "join" to convert the variable
+      # into a string      
+      install_wldt_staging: "{{ soa_installers | json_query('[?installer == `wldt`].staging')|join(',') }}"
+      install_wldt_zipname: "{{ soa_installers | json_query('[?installer == `wldt`].zipname')|join(',') }}"
+      install_wldt_creates: "{{ soa_installers | json_query('[?installer == `wldt`].createsfile')|join(',') }}"
+
+  - name: Setting the WLDT source directory
+    set_fact:
+      install_src_wldt: "{{ staging_directory }}/{{ install_wldt_staging }}/{{ install_wldt_zipname }}"
+
+  - name: Installing Weblogic Deploy Tooling
+    unarchive:
+      remote_src: yes
+      src: "{{ install_src_wldt }}"
+      dest: "{{ wldt_home }}"
+      creates: "{{ install_wldt_creates }}"
+
+  - name: Configuring injectors for Weblogic Deploy Tooling
+    copy:
+     src: model_variable_injector.json
+     dest: "{{ wldt_home }}//weblogic-deploy/lib"
+ 
+  - name: Configuring Weblogic Deploy Tooling for SOA
+    copy:
+     src: SOA.json
+     dest: "{{ wldt_home }}/weblogic-deploy/lib/typedefs"
+  
+  # https://github.com/oracle/weblogic-deploy-tooling/blob/master/site/use_cases.md#modeling-security-providers
+  # https://github.com/oracle/weblogic-deploy-tooling/issues/724
+  - name: Configuring JAR for TrustServiceIdentityAsserter
+    command: "{{ oracle_common }}/common/bin/prepareCustomProvider.sh \
+      -mjf={{ oracle_common }}/modules/oracle.jps/jps-wls-trustprovider.jar \
+      -out {{ oracle_common }}/lib/schematypes/jps-wls-trustprovider.schema.jar"
+    args:
+      creates: "{{ oracle_common }}/lib/schematypes/jps-wls-trustprovider.schema.jar"
+    environment:
+      CONFIG_JVM_ARGS: -DSchemaTypeSystemName=TrustServiceIdentityAsserter
+      ORACLE_HOME: "{{ oracle_home }}"

@@ -1,0 +1,7 @@
+---
+
+  - name: "Template to modify {{ oracle_common }}/common/bin/wlst_internal.sh"
+    template:
+      src: wlst_internal.sh.j2
+      dest: "{{ oracle_common }}/common/bin/wlst_internal.sh"
+      backup: yes

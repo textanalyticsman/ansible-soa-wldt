@@ -1,0 +1,70 @@
+---
+# ####################################################################################
+# This is the main playbook, which is used to call all the roles that will allow the
+# installation of Oracle JDK, Oracle Weblogic and Oracle SOA
+# ####################################################################################
+
+#- hosts: soa-admin
+#  remote_user: "{{ oracle_user }}"
+#  tasks:
+
+  #  - name: Name
+  #    debug:
+  #      msg: "{{ soa_binaries['weblogic12214']['name'] }}"
+
+  #  - name: Version
+  #    debug:
+  #      msg: "{{ soa_binaries['weblogic12214']['version'] }}"
+
+  #  - name: staging
+  #    debug:
+  #      msg: "{{ soa_binaries['weblogic12214']['staging'] }}"
+
+  #  - name: installer_name
+  #    debug:
+  #      msg: "{{ soa_binaries['weblogic12214']['installer_name'] }}"
+
+  #  - name: package
+  #    debug:
+  #      msg: "{{ soa_binaries['weblogic12214']['patches']['p1']['package'] }}"
+  
+  # - name: Looping dictionaries
+  #   debug: 
+  #     msg: 
+  #       - "{{ item.staging }}"
+  #   with_items:
+  #    - "{{ soa_installers }}"
+
+  # - name: Setting list RCU components
+  #   set_fact:       
+  #     list_components: "{{ soa_domain | json_query('[][].rcu[].components[]') | join(' ') }}"
+
+  # - name: Show
+  #   debug:
+  #     msg: "{{ list_components }}"
+
+  #- include_role:
+  #    name: directories
+
+#  - include_role:
+#      name: pack
+
+- hosts: soa-admin:soa-admin
+  remote_user: "{{ oracle_user }}"
+  tasks:
+
+#  - name: Testing template for WLDT
+#    template:
+#      src: inventories/dev/group_vars/all/AteneaDomainModel.yaml
+#      dest: "/tmp/AteneaDomainModel.yaml"
+  
+#  - include_role:
+#      name: installation
+
+   - name: Testing querying model file
+     set_fact:       
+       domainName: "{{ [topology] | json_query('[].Name') | join(' ') }}"
+  
+   - name: Show
+     debug:
+       msg: "{{ domainName }}"       

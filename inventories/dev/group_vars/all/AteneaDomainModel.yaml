@@ -1,0 +1,144 @@
+domainInfo:
+    AdminUserName: weblogic
+    AdminPassword: "{{ vault_weblogic_password }}"
+topology:
+    Name: soa_atenea
+    DomainVersion: 12.2.1.4.0
+    ParallelDeployApplicationModules: true
+    ProductionModeEnabled: true
+    NMProperties:
+        CrashRecoveryEnabled: true
+        CustomIdentityKeyStorePassPhrase: "{{vault_keystore_pass}}"
+        CustomIdentityAlias: ateneasoakey
+        CustomIdentityPrivateKeyPassPhrase: "{{ vault_privatekey_pass }}"        
+        CustomIdentityKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].keystorefile')|join(',') }}"
+        CustomIdentityKeyStoreType: "{{ soa_domain | json_query('[][certificates][][].keystoretype')|join(',') }}"
+        ListenPort: 5759
+        KeyStores: CustomIdentityAndCustomTrust
+        ListenAddress: "{{ groups['soa-admin'][0] }}"
+        weblogic.StartScriptName: startWebLogic.sh
+    Cluster:
+        soa_cluster:
+            CoherenceClusterSystemResource: defaultCoherenceCluster
+    Server:
+        '!soa_server1':
+        AdminServer:
+            ListenPort: 7001
+            CustomIdentityKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].keystorefile')|join(',') }}"
+            Machine: "{{ groups['soa-admin'][0].split('.')[0] }}"
+            KeyStores: CustomIdentityAndCustomTrust
+            CustomIdentityKeyStoreType: "{{ soa_domain | json_query('[][certificates][][].keystoretype')|join(',') }}"
+            CustomTrustKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].truststorefile')|join(',') }}"
+            CustomIdentityKeyStorePassPhraseEncrypted: "{{ vault_keystore_pass }}"
+            CustomTrustKeyStorePassPhraseEncrypted: "{{ vault_truststore_pass }}"
+            ListenAddress: "{{ groups['soa-admin'][0] }}"
+            SSL:
+                HostnameVerifier: weblogic.security.utils.SSLWLSWildcardHostnameVerifier
+                ServerPrivateKeyPassPhraseEncrypted: "{{ vault_privatekey_pass }}"
+                ServerPrivateKeyAlias: "{{ soa_domain | json_query('[][certificates][][].keystorealias')|join(',') }}"
+                IdentityAndTrustLocations: KeyStores
+            WebServer:
+                WebServerLog:
+                    LogFileFormat: extended
+                    ELFFields: 'date time cs-method ctx-ecid ctx-rid cs-uri sc-status bytes'
+        soa_server01:
+            ListenPort: 8001
+            CustomIdentityKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].keystorefile')|join(',') }}"
+            CoherenceClusterSystemResource: defaultCoherenceCluster
+            Machine: "{{ groups['soa-managed'][0].split('.')[0] }}"
+            KeyStores: CustomIdentityAndCustomTrust
+            CustomIdentityKeyStoreType:  "{{ soa_domain | json_query('[][certificates][][].keystoretype')|join(',') }}"
+            CustomTrustKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].truststorefile')|join(',') }}"
+            Cluster: soa_cluster
+            CustomIdentityKeyStorePassPhraseEncrypted: "{{ vault_keystore_pass }}"
+            CustomTrustKeyStorePassPhraseEncrypted: "{{ vault_truststore_pass }}"
+            ListenAddress: "{{ groups['soa-managed'][0] }}"
+            JTAMigratableTarget:
+                Cluster: soa_cluster
+                UserPreferredServer: soa_server01
+            SSL:
+                HostnameVerifier: weblogic.security.utils.SSLWLSWildcardHostnameVerifier
+                ServerPrivateKeyPassPhraseEncrypted: "{{ vault_privatekey_pass }}"
+                ServerPrivateKeyAlias: "{{ soa_domain | json_query('[][certificates][][].keystorealias')|join(',') }}"
+                IdentityAndTrustLocations: KeyStores
+            WebServer:
+                WebServerLog:
+                    LogFileFormat: extended
+                    ELFFields: 'date time cs-method ctx-ecid ctx-rid cs-uri sc-status bytes'                    
+        soa_server02:
+            ListenPort: 8001
+            CustomIdentityKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].keystorefile')|join(',') }}"
+            CoherenceClusterSystemResource: defaultCoherenceCluster
+            Machine: "{{ groups['soa-managed'][1].split('.')[0] }}"
+            KeyStores: CustomIdentityAndCustomTrust
+            CustomIdentityKeyStoreType: "{{ soa_domain | json_query('[][certificates][][].keystoretype')|join(',') }}"
+            CustomTrustKeyStoreFileName: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}/{{ soa_domain | json_query('[][certificates][][].truststorefile')|join(',') }}"
+            Cluster: soa_cluster
+            CustomIdentityKeyStorePassPhraseEncrypted: "{{ vault_keystore_pass }}"
+            CustomTrustKeyStorePassPhraseEncrypted: "{{ vault_truststore_pass }}"
+            ListenAddress: "{{ groups['soa-managed'][1] }}"
+            JTAMigratableTarget:
+                Cluster: soa_cluster
+                UserPreferredServer: soa_server02
+            SSL:
+                HostnameVerifier: weblogic.security.utils.SSLWLSWildcardHostnameVerifier
+                ServerPrivateKeyPassPhraseEncrypted: "{{ vault_privatekey_pass }}"
+                ServerPrivateKeyAlias: "{{ soa_domain | json_query('[][certificates][][].keystorealias')|join(',') }}"
+                IdentityAndTrustLocations: KeyStores
+            WebServer:
+                WebServerLog:
+                    LogFileFormat: extended
+                    ELFFields: 'date time cs-method ctx-ecid ctx-rid cs-uri sc-status bytes'
+    MigratableTarget:
+        soa_server02 (migratable):
+            Cluster: soa_cluster
+            MigrationPolicy: manual
+            UserPreferredServer: soa_server02
+        soa_server01 (migratable):
+            Cluster: soa_cluster
+            MigrationPolicy: manual
+            UserPreferredServer: soa_server01
+    ServerTemplate:
+        'wsm-cache-server-template':
+            ListenPort: 7100
+        'wsmpm-server-template':
+            ListenPort: 7100
+        'soa-server-template':
+            ListenPort: 7100
+    Machine:
+        machine01:
+            NodeManager:
+                NMType: SSL
+                ListenAddress: "{{ groups['soa-admin'][0] }}"
+                ListenPort: 5759
+        machine02:
+            NodeManager:
+                NMType: SSL
+                ListenAddress: "{{ groups['soa-managed'][0] }}"
+                ListenPort: 5759               
+        machine03:
+            NodeManager:
+                NMType: SSL
+                ListenAddress: "{{ groups['soa-managed'][1] }}"
+                ListenPort: 5759
+    SecurityConfiguration:
+        NodeManagerPasswordEncrypted: "{{ vault_nmuser_password }}"
+        NodeManagerUsername: nmUser
+        UseKSSForDemo: true
+        Realm:
+            myrealm:
+                AuthenticationProvider:
+                    Trust Service Identity Asserter:
+                        TrustServiceIdentityAsserter:
+                    DefaultAuthenticator:
+                        DefaultAuthenticator:
+                            UseRetrievedUserNameAsPrincipal: true
+                    DefaultIdentityAsserter:
+                        DefaultIdentityAsserter:
+resources:
+    CoherenceClusterSystemResource:
+        defaultCoherenceCluster:
+            Target: soa_cluster
+            CoherenceResource:
+                CoherenceClusterParams:
+                    ClusterListenPort: 7574

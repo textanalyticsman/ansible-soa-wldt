@@ -1,0 +1,36 @@
+---
+  # This must be executed just on all nodes that will contain managed servers
+  - name: Getting configuration to run unpack.sh
+    set_fact:
+      domainParentDir: "{{ soa_domain | json_query('[][home][][].parentdir')|join(',') }}"
+      domainName: "{{ [topology] | json_query('[].Name') | join(' ') }}"
+      # Directory to save template generated after running pack command
+      domainTemplateLocation: "{{ soa_domain | json_query('[][home][][].templatePackDir')|join(',') }}"
+      # Name for the file generated after running pack command
+      domainTemplateName: "{{ soa_domain | json_query('[][home][][].templatePackName')|join(',') }}"
+      # The applications directory for the domain
+      applicationsDir: "{{ soa_domain | json_query('[][home][][].applicationsdir')|join(',') }}"
+
+  - name: Creating directory to save domain template
+    file:
+      path: "{{ domainTemplateLocation }}"
+      state: directory
+      owner: "{{ oracle_user }}"
+      group: "{{ oracle_group }}"
+      mode: 0755        
+
+  - name: Pushing domain template from Admin Host into managed hosts
+    synchronize:
+      mode: push
+      src: "{{ domainTemplateLocation }}/{{ domainTemplateName }}.jar"
+      dest: "{{ domainTemplateLocation }}"
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  - name: Unpacking the domain 
+    command: "{{ oracle_common }}/common/bin/unpack.sh \
+      -domain={{ domainParentDir }}/{{ domainName }} \
+      -template={{ domainTemplateLocation }}/{{ domainTemplateName }}.jar \
+      -app_dir={{ applicationsDir }}"
+    args:
+      creates: "{{ domainParentDir }}/{{ domainName }}"
+    changed_when: false

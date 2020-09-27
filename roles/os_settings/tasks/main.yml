@@ -1,0 +1,42 @@
+---
+# Tasks used to set the operating system parameters
+
+ - name: Installing Operating System packages on target machine(s)
+   yum:
+    name: "{{ os_packages }}"
+    state: present
+   when: ansible_os_family == 'RedHat'
+   become: true
+
+ - name: Setting limits for processes, files, etc.
+   pam_limits:
+     domain: "{{ oracle_user }}"
+     limit_type: "{{ item.value.lim_type }}"
+     limit_item: "{{ item.value.lim_item }}"
+     value: "{{ item.value.lim_value }}"
+   loop: "{{ lookup('dict', limits) }}"
+   notify:
+   - Rebooting machine
+   become: true
+
+ - name: Installing pip for Python
+   yum:
+    name: python-pip
+    state: present
+   when: ansible_os_family == 'RedHat'
+   become: true
+
+ - name: Using pip to install Pexpect
+   pip:
+     name: pexpect
+   become: true
+
+ - name: Using pip to install cryptography
+   pip:
+     name: cryptography
+   become: true   
+
+ - name: Using pip to install pyOpenSSL
+   pip:
+     name: pyOpenSSL
+   become: true

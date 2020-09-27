@@ -1,0 +1,58 @@
+---
+# tasks file for directories
+
+ # To create some of the main directories used to install 
+ # Oracle Weblogic and SOA
+ - name: Creating main directories
+   file:
+     path: "{{ item }}"
+     state: directory
+     owner: "{{ oracle_user }}"
+     group: "{{ oracle_group }}"
+     mode: 0755
+   loop:
+     - "{{ staging_directory }}"
+     - "{{ oracle_base }}"
+     - "{{ oracle_home }}"
+     - "{{ patch_directory }}"
+     - "{{ response_directory }}"
+     - "{{ oracle_inventory_dir }}"
+     - "{{ oracle_jinja_templates }}"
+     - "{{ wldt_home }}"
+
+ # To create directories inside staging directories
+ - name: "Creating directories inside {{ staging_directory }}"
+   file:
+     path: "{{ staging_directory }}/{{ item.staging }}"
+     state: directory
+     owner: "{{ oracle_user }}"
+     group: "{{ oracle_group }}"
+     mode: 0755
+   with_items:
+     - "{{ soa_installers }}"
+
+ # To copy installers into staging directory
+ - name: "Copying installers into {{ staging_directory }}"
+   copy:
+     src: "{{ source_directory }}/{{ item.zipname }}"
+     dest: "{{ staging_directory }}/{{ item.staging }}/{{ item.zipname }}"
+     remote_src: yes
+     owner: "{{ oracle_user }}"
+     group: "{{ oracle_group }}"
+     mode: '0755'
+   with_items:
+     - "{{ soa_installers }}"
+ 
+ # To copy patches into staging directory
+ - name: "Copying patches into {{ staging_directory }}"
+   copy:
+     src: "{{ source_directory }}/{{ item.1.zipname }}"
+     dest: "{{ patch_directory }}/{{ item.1.zipname }}"
+     remote_src: yes
+     owner: "{{ oracle_user }}"
+     group: "{{ oracle_group }}"
+     mode: '0755'
+   with_subelements:
+     - "{{ soa_installers }}"
+     - patches
+     - skip_missing: True

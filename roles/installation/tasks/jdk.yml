@@ -1,0 +1,30 @@
+  - name: Getting configuration to install JDK
+    set_fact:
+      # Even though each expression returns just one value. I used "join" to convert the variable
+      # into a string
+      install_java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"
+      install_java_staging: "{{ soa_installers | json_query('[?installer == `jdk8u251`].staging')|join(',') }}"
+      install_java_zip: "{{ soa_installers | json_query('[?installer == `jdk8u251`].zipname')|join(',') }}"
+
+  - name: Setting the Java source directory
+    set_fact:
+      install_src_java: "{{ staging_directory }}/{{ install_java_staging }}/{{ install_java_zip }}"
+
+  - name: Creting the JDK directory
+    file:
+      path: "{{ install_java_home }}"
+      state: directory
+
+  - name: Installing JDK
+    unarchive:
+      remote_src: yes
+      src: "{{ install_src_java }}"
+      dest: "{{ install_java_home }}"
+      extra_opts: [--strip-components=1] # This one is used to avoid creating the top directory with version numnber
+      creates: "{{ install_java_home }}/bin/java"
+
+  - name: Configuring urandom
+    lineinfile:
+      dest: "{{ install_java_home }}/jre/lib/security/java.security"
+      regexp: ^securerandom.source=file:/dev/random
+      line: securerandom.source=file:/dev/urandom

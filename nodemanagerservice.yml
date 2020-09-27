@@ -1,0 +1,9 @@
+---
+- hosts: soa-admin:soa-managed
+  remote_user: "{{ oracle_user }}"
+  become: yes
+  become_user: root
+  tasks:
+  
+  - include_role:
+      name: nodemanagerservice

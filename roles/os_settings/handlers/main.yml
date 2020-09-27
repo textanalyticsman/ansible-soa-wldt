@@ -1,0 +1,7 @@
+---
+# handlers file for os_settings
+ - name: Rebooting machine
+   reboot:
+     reboot_timeout: 300
+   become: true
+

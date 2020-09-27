@@ -1,0 +1,24 @@
+  - name: Getting configuration to patch opatch
+    set_fact:
+      # Even though each expression returns just one value. I used "join" to convert the variable
+      # into a string
+      java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"
+      # Square braces used to flat projections i.e. zipname[]
+      # https://jmespath.org/tutorial.html#flatten-projections
+      patch_zip: "{{ soa_installers | json_query('[].patches[?patch== `\"28186730\"`].zipname[]') | join(',') }}"
+      patch_id: "{{ soa_installers | json_query('[].patches[?patch== `\"28186730\"`].id[]') | join(',') }}"
+      patch_jar_file: "{{ soa_installers | json_query('[].patches[?patch== `\"28186730\"`].jarfile[]') | join(',') }}"
+      patch_creates_file: "{{ soa_installers | json_query('[].patches[?patch== `\"28186730\"`].createsfile[]') | join(',') }}"
+
+  - name: Unzip the OPatch patch
+    unarchive:
+      remote_src: yes
+      src: "{{ patch_directory }}/{{ patch_zip }}"
+      dest: "{{ patch_directory }}"
+
+  - name: "Patching opatch"
+    command: "{{ java_home }}/bin/java -jar {{ patch_directory }}/{{ patch_id }}/{{ patch_jar_file }} -silent \
+      oracle_home={{ oracle_home }} -invPtrLoc {{ oracle_inventory_file }} "
+    args:
+      creates: "{{ patch_creates_file }}"
+    changed_when: false

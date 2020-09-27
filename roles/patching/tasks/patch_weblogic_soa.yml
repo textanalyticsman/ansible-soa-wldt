@@ -1,0 +1,43 @@
+  - name: Getting configuration to patch Weblogic
+    set_fact:
+      # This query extracts the list of patches for Weblogic
+      # This gets all the patches whose patch numnber is different from 28186730
+      # Why?
+      # This is because in my configuration file, I have put the Opatch patch and the
+      # Weblogic patches all together. I think this is something that should be improved in the 
+      # future
+      # Square braces used to flat projections i.e. zipname[]
+      # https://jmespath.org/tutorial.html#flatten-projections
+      patch_list_weblogic: "{{ soa_installers | json_query('[?installer== `weblogic12214`][].patches[?patch!= `\"28186730\"`][]')  }}"
+      # This query extracts the list of patches for SOA
+      # Square braces used to flat projections
+      patch_list_soa: "{{ soa_installers | json_query('[?installer== `soa12214`][].patches[]')  }}"
+      # Even though each expression returns just one value. I used "join" to convert the variable
+      # into a string
+      java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"
+
+  - name: Putting the list of patches all together
+    set_fact:
+      # Appeding the list of SOA patches to the list of Weblogic patches
+      # https://blog.crisp.se/2016/10/20/maxwenzin/how-to-append-to-lists-in-ansible
+      patches_list: "{{ patch_list_weblogic +  patch_list_soa }}"      
+
+  - name: Unzip Weblogic and SOA patches
+    unarchive:
+      remote_src: yes
+      src: "{{ patch_directory }}/{{ item.zipname }}" # In this case gets the zipname i.e. "p30970477_122140_Generic.zip"
+      dest: "{{ patch_directory }}"
+    loop: "{{ patches_list }}"
+
+  - name: Using lsinventory to get installed patches for Weblogic and SOA
+    command:  "{{ opatch_executable }} lsinventory -jdk {{ java_home }} \
+      -oh {{oracle_home}}"
+    register: lsinventory
+    changed_when: false
+
+  - name: Applying Weblogic and SOA patches
+    command:  "{{ opatch_executable }} apply -jdk {{ java_home }} -silent \
+      -oh {{oracle_home}} {{ patch_directory }}/{{ item.patch }}" # In this case gets the patch i.e. "30970477"
+    when: not lsinventory is search("{{ item.patch }}")
+    loop: "{{ patches_list }}"
+    changed_when: false

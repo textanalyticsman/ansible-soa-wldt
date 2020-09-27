@@ -1,0 +1,19 @@
+{% set parentdir = soa_domain | json_query('[][home][][].parentdir')|join(',') %}
+{% set domainName = [topology] | json_query('[].Name') | join(' ') %}
+{% set domainHome =  parentdir  + '/' +  domainName  %}
+{% set nmStartScript =  domainHome + '/' + 'bin/startNodeManager.sh'  %}
+{% set nmStopScript =  domainHome + '/' + 'bin/stopNodeManager.sh'  %}
+
+[Unit]
+Description=Node Manager for Managed Servers
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ nmStartScript }}
+ExecStop={{ nmStopScript }}
+User={{ oracle_user }}
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+{% set TrustKeyStore = soa_domain | json_query('[][certificates][][].truststore')|join(',') %}
+{% set keyStoreDir = soa_domain | json_query('[][certificates][][].keystoredir')|join(',') %}
+{% set CustomTrustKeyStoreFileName = soa_domain | json_query('[][certificates][][].truststorefile')|join(',') %}
+{% set CustomTrustKeyStoreType = soa_domain | json_query('[][certificates][][].keystoretype')|join(',') %}
+{% set CustomTrustKeyStorePassPhrase = soa_domain | json_query('[][certificates][][].truststorepass')|join(',') %}
+#!/bin/sh
+
+# Determine the location of this script...
+# Note: this will not work if the script is sourced (. ./wlst.sh)
+SCRIPTNAME=$0
+SCRIPTPATH=`dirname "${SCRIPTNAME}"`
+
+# Set CURRENT_HOME...
+CURRENT_HOME=`cd "${SCRIPTPATH}/../.." ; pwd`
+export CURRENT_HOME
+
+# Set the MW_HOME relative to the CURRENT_HOME...
+MW_HOME=`cd "${CURRENT_HOME}/.." ; pwd`
+export MW_HOME
+
+. ${MW_HOME}/oracle_common/common/bin/setWlstEnv_internal.sh
+
+JVM_ARGS="${JVM_ARGS} -Dweblogic.security.TrustKeyStore={{ TrustKeyStore }} \
+-Dweblogic.security.CustomTrustKeyStoreFileName={{ keyStoreDir }}/{{ CustomTrustKeyStoreFileName }} \
+-Dweblogic.security.CustomTrustKeyStoreType={{ CustomTrustKeyStoreType }} \
+-Dweblogic.security.CustomTrustKeyStorePassPhrase={{ CustomTrustKeyStorePassPhrase }}"
+
+if [ -d "${JAVA_HOME}" ]; then
+ eval '"${JAVA_HOME}/bin/java"' ${JVM_ARGS} weblogic.WLST '"$@"'
+else
+ exit 1
+fi

@@ -1,0 +1,56 @@
+---
+# vars file for os_settings
+
+# OS packages required by Oracle Fusion Middleware 12.2.1.4
+# https://docs.oracle.com/en/middleware/fusion-middleware/12.2.1.4/sysrs/system-requirements-and-specifications.html#GUID-B505E6A0-2B89-48B9-AFFE-CAFFCA4AC0CE
+
+os_packages:
+  - binutils
+  - compat-libcap1
+  - compat-libstdc++-33
+  - compat-libstdc++-33.i686
+  - gcc
+  - gcc-c++
+  - glibc
+  - glibc.i686
+  - glibc-devel
+  - libaio
+  - libaio-devel
+  - libgcc
+  - libgcc.i686
+  - libstdc++
+  - libstdc++.i686
+  - libstdc++-devel
+  - dejavu-serif-fonts
+  - ksh
+  - make
+  - sysstat
+  - numactl
+  - numactl-devel
+  - motif
+  - motif-devel
+  - redhat-lsb
+  - redhat-lsb-core
+  - openssl
+  - epel-release
+
+# Number of processes and open files
+limits:
+  01:
+    lim_item: nofile
+    lim_type: soft
+    lim_value: 1024
+  02:
+    lim_item: nofile
+    lim_type: hard
+    lim_value: 65536
+  03:
+    lim_item: nproc
+    lim_type: soft
+    lim_value: 16384
+  04:
+    lim_item: nproc
+    lim_type: hard
+    lim_value: 16384
+
+

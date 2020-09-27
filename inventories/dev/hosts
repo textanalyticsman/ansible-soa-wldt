@@ -1,0 +1,7 @@
+[soa-admin]
+machine01.pegasus.net
+[soa-managed]
+machine02.pegasus.net
+machine03.pegasus.net
+[database]
+machine05.pegasus.net

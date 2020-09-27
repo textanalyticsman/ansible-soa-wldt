@@ -1,0 +1,32 @@
+  - name: Getting configuration to install SOA
+    set_fact:
+      # Even though each expression returns just one value. I used "join" to convert the variable
+      # into a string
+      install_java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"
+      install_soa_staging: "{{ soa_installers | json_query('[?installer == `soa12214`].staging')|join(',') }}"
+      install_soa_zip: "{{ soa_installers | json_query('[?installer == `soa12214`].zipname')|join(',') }}"
+      install_soa_file: "{{ soa_installers | json_query('[?installer == `soa12214`].filename')|join(',') }}"
+      install_soa_rsp_file: "{{ soa_installers | json_query('[?installer == `soa12214`].responsefile')|join(',') }}"
+      install_soa_memory: "{{ soa_installers | json_query('[?installer == `soa12214`].memorysettings')|join(',') }}"
+      install_soa_creates: "{{ soa_installers | json_query('[?installer == `soa12214`].createsfile')|join(',') }}"
+
+  - name: Unzip SOA installer
+    unarchive:
+      remote_src: yes
+      src: "{{ staging_directory }}/{{ install_soa_staging }}/{{ install_soa_zip }}"
+      dest: "{{ staging_directory }}/{{ install_soa_staging }}"
+      creates: "{{ staging_directory }}/{{ install_soa_staging }}/{{ install_soa_file }}"
+
+  - name: "Using a template to create the SOA response file" # Actually the same for Weblogic and SOA
+    template:
+      src: soa.rsp.j2
+      dest: "{{ install_soa_rsp_file }}"
+
+  - name: "Installing SOA"
+    command: "{{ install_java_home }}/bin/java \
+      {{ install_soa_memory }} -jar {{ staging_directory }}/{{ install_soa_staging }}/{{ install_soa_file }} -silent \
+      -responseFile {{ install_soa_rsp_file }} \
+      -invPtrLoc {{ oracle_inventory_file }}"
+    args:
+      creates: "{{ install_soa_creates }}"
+    changed_when: false

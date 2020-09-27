@@ -1,0 +1,37 @@
+---
+  - name: Getting configuration to create directory for boot.properties
+    set_fact:
+      domainParentDir: "{{ soa_domain | json_query('[][home][][].parentdir')|join(',') }}"
+      # Getting Domain Name from the Model File called group_vars/all/AteneaDomainModel.yaml
+      domainName: "{{ [topology] | json_query('[].Name') | join(' ') }}"
+      connection_string: "{{ soa_domain | json_query('[][].rcu[].connectionstring') | join(',') }}"
+      db_user: "{{ soa_domain | json_query('[][].rcu[].dbuser') | join(',') }}"
+      schema_prefix: "{{ soa_domain | json_query('[][].rcu[].schemaprefix') | join(',') }}"
+      db_password: "{{ soa_domain | json_query('[][].rcu[].dbpassword[]') | join(' ') }}"
+      schema_password: "{{ soa_domain | json_query('[][].rcu[].schemapassword[]') | join(' ') }}"   
+      java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"   
+
+  - name: Template to generate the model used by Weblogic Deploy Tooling
+    template:
+      src: ../../inventories/dev/group_vars/all/AteneaDomainModel.yaml
+      dest: "{{ oracle_jinja_templates }}/AteneaDomainModel.yaml"
+
+  - name: Creating a SOA domain
+    expect:
+      command: "{{ wldt_home }}/weblogic-deploy/bin/createDomain.sh \
+        -run_rcu -oracle_home {{ oracle_home }} \
+        -domain_parent {{ domainParentDir }} \
+        -domain_type SOA \
+        -model_file {{ oracle_jinja_templates }}/AteneaDomainModel.yaml \
+        -rcu_db {{ connection_string }} \
+        -rcu_prefix {{ schema_prefix }} \
+        -rcu_db_user {{ db_user }}"
+      responses:
+        'Enter the RCU database SYS user password': "{{ db_password }}"
+        'Please enter the RCU Schema password': "{{ schema_password }}"
+      timeout: 1200 # Expect timeout by default is 30s. Here, I am using 20 minutes as this process takes time        
+    environment:
+      JAVA_HOME: "{{ java_home }}"
+    args:
+      creates: "{{ domainParentDir }}/{{ domainName }}"
+    changed_when: false

@@ -1,0 +1,124 @@
+---
+# I want to set a configuration file based on YAML with the most important 
+# information at a global level. This configuration can be used by different roles
+# and or playbooks
+
+# Directory where installers are copy from
+source_directory: /u01/software
+# Directory where installers are copy to
+staging_directory: /u01/staging
+# Response files directory
+response_directory: "{{ staging_directory }}/responsefiles"
+# The user that will run Weblogic
+oracle_user: oracle
+# The oracle's group
+oracle_group: oinstall
+# The base where Oracle products will be installed
+oracle_base: "/u01/{{ oracle_user }}/product"
+# The Oracle home for Weblogic and SOA
+oracle_home: "{{ oracle_base }}/fmw12214"
+# The Oracle common path
+oracle_common: "{{ oracle_home }}/oracle_common"
+# Directory where patches are copy to
+patch_directory: "{{ staging_directory }}/patches"
+# Directory for Oracle's inventory
+oracle_inventory_dir:  "{{ oracle_base }}/inventory"
+# Inventory file
+oracle_inventory_file: "{{ oracle_inventory_dir }}/oraInst.loc"
+# Opatch directory
+opatch_executable: "{{ oracle_home }}/OPatch/opatch"
+# Directory to save Jinja templates
+oracle_jinja_templates: "/u01/{{ oracle_user }}/templates"
+# Directory to create node manager services files
+systemd_directory: /usr/lib/systemd/system
+# Directory to install Oracle Weblogic Deploy Tooling
+wldt_home: "{{ oracle_base }}/weblogic-deploy-tooling"
+
+# This list of dictionaries is used to configure all the installers needed to create an
+# Oracle SOA domain. 
+soa_installers:
+  - installer: jdk8u251
+    name: Oracle JDK
+    version: 8u251
+    java_home: "/u01/{{ oracle_user }}/java/jdk"
+    staging: stgjdk8u251         # To  create a directory in "{{ staging_directory }}"
+    filename: jdk-8u251-linux-x64.tar.gz
+    zipname: jdk-8u251-linux-x64.tar.gz
+  - installer: weblogic12214
+    name: Oracle Weblogic 
+    version: 12.2.1.4
+    staging: stgweblogic12214    # To  create a directory in "{{ staging_directory }}"
+    filename: fmw_12.2.1.4.0_infrastructure.jar
+    zipname: V983368-01.zip
+    responsefile: "{{ response_directory }}/weblogic.rsp"
+    memorysettings: -Xmx1g
+    createsfile: "{{ oracle_home }}/wlserver/server/bin/setWLSEnv.sh"
+    patches: 
+      - patch: "122143" # This is the directory name after unzipping the patch
+        zipname: p30729380_122140_Generic.zip
+      - patch: "30970477"
+        zipname: p30970477_122140_Generic.zip
+      - patch: "28186730"           # To patch opatch
+        zipname: p28186730_139422_Generic.zip
+        id: 6880880
+        jarfile: opatch_generic.jar
+        createsfile: "{{ oracle_home }}/inventory/distributions/OPatch_13.9.4.2.2.xml"
+  - installer: soa12214
+    name: Oracle SOA
+    version: 12.2.1.4
+    staging: stgsoa12214         # To  create a directory in "{{ staging_directory }}"
+    filename: fmw_12.2.1.4.0_soa.jar
+    zipname: SOA_12.2.1.4_V983383-01.zip
+    responsefile: "{{ response_directory }}/soa.rsp"
+    memorysettings: -Xmx1g
+    createsfile: "{{ oracle_home }}/soa/bin/soaversion.sh"
+    patches:
+      - patch: "30995852"
+        zipname: p30995852_122140_Generic.zip
+  - installer: wldt
+    name: Weblogic Deploy Tooling
+    version: 1.9.5
+    staging: stgwldt         # To  create a directory in "{{ staging_directory }}"
+    filename: weblogic-deploy.zip
+    zipname: weblogic-deploy.zip
+    createsfile: "{{ wldt_home }}/weblogic-deploy/bin/prepareModel.sh"
+
+soa_domain:
+  - rcu:
+      connectionstring: machine05.pegasus.net:1521:ofm12db
+      dbuser: sys
+      dbpassword: "{{ vault_sys_password }}"
+      schemaprefix: SOAPEGASUS
+      schemapassword: "{{ vault_schema_password }}"
+  - home:
+      parentdir: "/u01/{{ oracle_user }}/domains"
+      templatePackName: soaDomainTemplate
+      templatePackDir: "/u01/{{ oracle_user }}/packdomaintemplate"
+      applicationsdir: "/u01/{{ oracle_user }}/domains/applications"
+  - certificates:
+      keystore: CustomIdentityAndCustomTrust
+      keystoredir: "/u01/{{ oracle_user }}/domains/certificates"
+      keystorefile: atenea.jks
+      keystoretype: JKS
+      keystorealias: ateneasoakey      
+      keystorepass: "{{ vault_keystore_pass }}"
+      truststorefile: ateneatrust.jks
+      truststore: CustomTrust
+      truststorepass: "{{ vault_truststore_pass }}"
+      truststorealias: ateneasoatrust      
+      privatekeypass: "{{ vault_privatekey_pass }}"      
+      privatekeyfile: atenea.pem
+      privatekeycipher: auto
+      privatekeytype: RSA
+      privatekeysize: 4096
+      csrfile: atenea.csr
+      csrcountry: PE    # Country name must be a 2 character country code
+      csrorganizationname: Atenea
+      csremail: fakemail@atenea.com
+      # This is important for hostname verification
+      # Subject Alternative Name needs DNS: prefix
+      csrsubjectaltname: "DNS:{{ groups['soa-admin'][0] }},DNS:{{ groups['soa-managed'][0] }},DNS:{{ groups['soa-managed'][1] }}"
+      certfile: atenea.crt
+      certprovider: selfsigned
+      pkcs12file: atenea.p12
+      pkcs12passphrase: "{{ vault_pkcs12_pass }}"

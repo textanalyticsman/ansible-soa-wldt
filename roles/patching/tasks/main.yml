@@ -1,0 +1,2 @@
+- include_tasks: patch_opatch.yml
+- include_tasks: patch_weblogic_soa.yml

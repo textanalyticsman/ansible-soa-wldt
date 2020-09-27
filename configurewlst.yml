@@ -1,0 +1,7 @@
+---
+- hosts: soa-admin:soa-managed
+  remote_user: "{{ oracle_user }}"
+  tasks:
+  
+  - include_role:
+      name: configurewlst

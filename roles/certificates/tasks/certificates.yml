@@ -1,0 +1,135 @@
+---
+
+  - name: Getting configuration to create certificates
+    set_fact:
+      java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"
+      keyStoreDir: "{{ soa_domain | json_query('[][certificates][][].keystoredir')|join(',') }}"
+      keyStoreFile: "{{ soa_domain | json_query('[][certificates][][].keystorefile')|join(',') }}"
+      trustStoreFile: "{{ soa_domain | json_query('[][certificates][][].truststorefile')|join(',') }}"
+      keyStorePass: "{{ soa_domain | json_query('[][certificates][][].keystorepass')|join(',') }}"
+      trustStorePass: "{{ soa_domain | json_query('[][certificates][][].truststorepass')|join(',') }}"
+      privateKeyPass: "{{ soa_domain | json_query('[][certificates][][].privatekeypass')|join(',') }}"
+      privateKeyFile: "{{ soa_domain | json_query('[][certificates][][].privatekeyfile')|join(',') }}"
+      privateKeyCipher: "{{ soa_domain | json_query('[][certificates][][].privatekeycipher')|join(',') }}"
+      privateKeyType: "{{ soa_domain | json_query('[][certificates][][].privatekeytype')|join(',') }}"
+      privateKeySize: "{{ soa_domain | json_query('[][certificates][][].privatekeysize')|join(',') }}"
+      csrFile: "{{ soa_domain | json_query('[][certificates][][].csrfile')|join(',') }}"
+      csrCountry: "{{ soa_domain | json_query('[][certificates][][].csrcountry')|join(',') }}"
+      csrOrganizationName: "{{ soa_domain | json_query('[][certificates][][].csrorganizationname')|join(',') }}"
+      csrEmail: "{{ soa_domain | json_query('[][certificates][][].csremail')|join(',') }}"
+      csrSubjectAltName: "{{ soa_domain | json_query('[][certificates][][].csrsubjectaltname')|join(',') }}"
+      certFile: "{{ soa_domain | json_query('[][certificates][][].certfile')|join(',') }}"
+      certProvider: "{{ soa_domain | json_query('[][certificates][][].certprovider')|join(',') }}"
+      keyStoreAlias: "{{ soa_domain | json_query('[][certificates][][].keystorealias')|join(',') }}"
+      trustStoreAlias: "{{ soa_domain | json_query('[][certificates][][].truststorealias')|join(',') }}"
+      keyStoreType: "{{ soa_domain | json_query('[][certificates][][].keystoretype')|join(',') }}"
+      pkcs12File: "{{ soa_domain | json_query('[][certificates][][].pkcs12file')|join(',') }}"      
+      pkcs12PassPhrase: "{{ soa_domain | json_query('[][certificates][][].pkcs12passphrase')|join(',') }}"
+  
+  - name: Creating certificates' directory
+    file:
+      path: "{{ keyStoreDir }}"
+      state: directory
+      owner: "{{ oracle_user }}"
+      group: "{{ oracle_group }}"
+      mode: 0755
+
+  - name: Creating a private key
+    openssl_privatekey:
+      path: "{{ keyStoreDir }}/{{ privateKeyFile }}"
+      passphrase: "{{ privateKeyPass }}"
+      cipher: "{{ privateKeyCipher }}"
+      type: "{{ privateKeyType }}"
+      size: "{{ privateKeySize }}"
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  - name: Creating a Certificate Signing Request
+    openssl_csr:
+      path: "{{ keyStoreDir }}/{{ csrFile }}"
+      privatekey_path: "{{ keyStoreDir }}/{{ privateKeyFile }}"
+      privatekey_passphrase: "{{ privateKeyPass }}"
+      country_name: "{{ csrCountry }}"
+      organization_name: "{{ csrOrganizationName }}"
+      email_address: "{{ csrEmail }}"
+      subject_alt_name: "{{ csrSubjectAltName }}"
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+  
+  - name: Creating self signed certificate
+    openssl_certificate:
+      path: "{{ keyStoreDir }}/{{ certFile }}"
+      privatekey_path: "{{ keyStoreDir }}/{{ privateKeyFile }}"
+      privatekey_passphrase: "{{ privateKeyPass }}"
+      csr_path: "{{ keyStoreDir }}/{{ csrFile }}"
+      provider: "{{ certProvider }}"
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  - name: Creating a pkcs12 which contains private key and self signed certificate
+    openssl_pkcs12:
+      action: export
+      path: "{{ keyStoreDir }}/{{ pkcs12File }}"
+      friendly_name: "{{ keyStoreAlias }}"
+      privatekey_path: "{{ keyStoreDir }}/{{ privateKeyFile }}"
+      certificate_path: "{{ keyStoreDir }}/{{ certFile }}"
+      privatekey_passphrase: "{{ privateKeyPass }}"
+      passphrase: "{{ pkcs12PassPhrase }}"
+      state: present
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  - name: Using the pkcs12 file containing private key and self signed certificate to generate a keystore
+    java_cert:
+      cert_alias: "{{ keyStoreAlias }}"
+      pkcs12_alias: "{{ keyStoreAlias }}"
+      pkcs12_path: "{{ keyStoreDir }}/{{ pkcs12File }}"
+      pkcs12_password: "{{ pkcs12PassPhrase }}"
+      keystore_path: "{{ keyStoreDir }}/{{ keyStoreFile }}"
+      keystore_pass: "{{ keyStorePass }}"
+      keystore_type: "{{ keyStoreType }}"
+      executable: "{{ java_home }}/bin/keytool"
+      keystore_create: yes
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  # https://github.com/ansible/ansible/issues/43039
+  - name: Fixing the private key password
+    expect:
+      command: "keytool -alias {{ keyStoreAlias }} -keystore {{ keyStoreDir }}/{{ keyStoreFile }} \
+        -storepass {{ keyStorePass }} -keypasswd -new {{ privateKeyPass }}"
+      responses:
+        Enter key password for .*: "{{ privateKeyPass }}"
+    no_log: yes
+    changed_when: false
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"    
+    
+  
+  # This trust store is going to be used by internal customers such as
+  # WLST on SSL
+  - name: Creating a truststore with containing public self signed certificate
+    java_cert:
+      cert_alias: "{{ trustStoreAlias }}"
+      cert_path: "{{ keyStoreDir }}/{{ certFile }}"
+      keystore_path: "{{ keyStoreDir }}/{{ trustStoreFile }}"
+      keystore_pass: "{{ trustStorePass }}"
+      keystore_type: "{{ keyStoreType }}"
+      executable: "{{ java_home }}/bin/keytool"
+      keystore_create: yes
+    run_once: true
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  - name: Pushing keystore from Admin host into managed hosts
+    synchronize:
+      mode: push
+      src: "{{ keyStoreDir }}/{{ keyStoreFile }}"
+      dest: "{{ keyStoreDir }}/{{ keyStoreFile }}"
+    delegate_to: "{{ groups['soa-admin'][0] }}"
+
+  - name: Pushing truststore from Admin host into managed hosts
+    synchronize:
+      mode: push
+      src: "{{ keyStoreDir }}/{{ trustStoreFile }}"
+      dest: "{{ keyStoreDir }}/{{ trustStoreFile }}"
+    delegate_to: "{{ groups['soa-admin'][0] }}"

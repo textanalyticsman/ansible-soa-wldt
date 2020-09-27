@@ -1,0 +1,40 @@
+---
+# tasks file for nodemanagerservice
+
+ # This should run only on the AdminServer node
+ - name: Creating service file for node manager AdminServer
+   template:
+     src: nmadminserver.service.j2
+     dest: "{{ systemd_directory }}/nmadminserver.service"
+     mode: '0644'
+   when:
+     inventory_hostname in groups['soa-admin']
+
+ # This should run only on all Managed Server nodes
+ - name: Creating service file for node manager Managed Servers
+   template:
+     src: nmmanagedserver.service.j2
+     dest: "{{ systemd_directory }}/nmmanagedserver.service"
+     mode: '0644'
+   when:
+     inventory_hostname in groups['soa-managed']
+ 
+ # This should run on all nodes
+ - name: Executing daemon-reload
+   command: systemctl daemon-reload
+
+ # This should run only on the AdminServer node
+ - name: Enabling the node manager AdminServer
+   service:
+     name: nmadminserver
+     enabled: yes
+   when:
+     inventory_hostname in groups['soa-admin']
+
+ # This should run only on all Managed Server nodes
+ - name: Enabling the node manager Managed Servers
+   service:
+     name: nmmanagedserver
+     enabled: yes
+   when:
+     inventory_hostname in groups['soa-managed']

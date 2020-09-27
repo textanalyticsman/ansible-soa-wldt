@@ -1,0 +1,37 @@
+  - name: Getting configuration to install Weblogic
+    set_fact:
+      # Even though each expression returns just one value. I used "join" to convert the variable
+      # into a string
+      install_java_home: "{{ soa_installers | json_query('[?installer == `jdk8u251`].java_home')|join(',') }}"
+      install_weblogic_staging: "{{ soa_installers | json_query('[?installer == `weblogic12214`].staging')|join(',') }}"
+      install_weblogic_zip: "{{ soa_installers | json_query('[?installer == `weblogic12214`].zipname')|join(',') }}"
+      install_weblogic_file: "{{ soa_installers | json_query('[?installer == `weblogic12214`].filename')|join(',') }}"
+      install_weblogic_rsp_file: "{{ soa_installers | json_query('[?installer == `weblogic12214`].responsefile')|join(',') }}"
+      install_weblogic_memory: "{{ soa_installers | json_query('[?installer == `weblogic12214`].memorysettings')|join(',') }}"
+      install_weblogic_creates: "{{ soa_installers | json_query('[?installer == `weblogic12214`].createsfile')|join(',') }}"
+
+  - name: Unzip Weblogic installer
+    unarchive:
+      remote_src: yes
+      src: "{{ staging_directory }}/{{ install_weblogic_staging }}/{{ install_weblogic_zip }}"
+      dest: "{{ staging_directory }}/{{ install_weblogic_staging }}"
+      creates: "{{ staging_directory }}/{{ install_weblogic_staging }}/{{ install_weblogic_file }}"
+
+  - name: "Using a template to create the Weblogic response file"
+    template:
+      src: weblogic.rsp.j2
+      dest: "{{ install_weblogic_rsp_file }}"
+
+  - name: "Using a template to create the inventory"
+    template:
+      src: oraInst.loc.j2
+      dest: "{{ oracle_inventory_file }}"
+
+  - name: "Installing Weblogic"
+    command: "{{ install_java_home }}/bin/java \
+      {{ install_weblogic_memory }} -jar {{ staging_directory }}/{{ install_weblogic_staging }}/{{ install_weblogic_file }} -silent \
+      -responseFile {{ install_weblogic_rsp_file }} \
+      -invPtrLoc {{ oracle_inventory_file }}"
+    args:
+      creates: "{{ install_weblogic_creates }}"
+    changed_when: false

@@ -1,0 +1,8 @@
+vault_sys_password: oracle123456
+vault_weblogic_password: weblogic123456
+vault_nmuser_password: weblogic123456
+vault_schema_password: schema123456
+vault_truststore_pass: truststore123456
+vault_keystore_pass: keystore123456
+vault_privatekey_pass: privatekey123456
+vault_pkcs12_pass: pkcs12123456

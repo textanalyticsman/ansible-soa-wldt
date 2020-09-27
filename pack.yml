@@ -1,0 +1,6 @@
+---
+ - hosts: soa-admin
+   remote_user: "{{ oracle_user }}"
+   tasks:
+     - include_role:
+         name: pack

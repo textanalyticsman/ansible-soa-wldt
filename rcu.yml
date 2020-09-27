@@ -1,0 +1,6 @@
+---
+ - hosts: soa-admin
+   remote_user: oracle
+   tasks:
+     - include_role:
+         name: rcu
