@@ -1,6 +1,6 @@
-Ansible Playbooks for SOA 12.2.1.4
-===================================
-This document explains how to use the set of Ansible playbooks provided in this repository to install, patch and configure an Oracle SOA domain 12.2.1.4.
+Weblogic Deploy Tooling and Ansible to create a SOA 12.2.1.4 domain
+===================================================================
+This document explains how to use Weblogic Deploy Tooling and a set of Ansible playbooks provided in this repository to install, patch and configure an Oracle SOA domain 12.2.1.4.
 
 Architecture implemented
 ------------------------
@@ -45,16 +45,12 @@ How have you configured Ansible?
 
 As I am using Windows 10, I have configured WSL Ubuntu to access the target machines that by the way are running on Oracle Virtual Box; which means I have configured the user **oracle** and the group **oinstall** on my WSL Ubuntu, which I do not think it is a good idea. However, this is just a demo.
 
-Why have you written this when there are plenty of playbooks for SOA on the web?
---------------------------------------------------------------------------------
+Why have you written this ?
+---------------------------
 
-I think it is important to explain why I am doing this.
+After years Oracle has provided a tool that helps to automate the provisioning of Weblogic domains. Thus, I wanted to test it.
 
-1.  In 2019 I wanted to get deep into Weblogic Deploy Tooling. However, I was missing an environment to apply introspection - What do you mean by introspection? – By introspection I mean [this][]. Therefore, this script is going to help me to create environments to test Weblogic Deploy Tooling
-
-2.  I wanted to try a different approach to write Ansible playbooks. Thus, I started with this project as a kind of experiment – What do you mean by different approach? – it is simple, I wanted to reduce the number of variables declared everywhere, which I think complicates many implementations with Ansible. Therefore, I decided to centralize the configuration using a YAML file (you can see it [here][]) and then using [JSON Query Filter][] to extract the configuration from just a file.
-
-3.  This is the most important reason, I want to do this
+This means, this time I do not need to write any Weblogic Scripting Tool scripts. I am just using Weblogic Deploy Tooling to create the SOA domain.
 
 Which technologies have you used here?
 --------------------------------------
@@ -73,8 +69,10 @@ I have used:
 
 6.  Some theory about PKI/SSL.
 
-Why do I need to use it?
-------------------------
+7. Weblogic Deploy Tooling [Weblogic Deploy Tooling][].
+
+Ingredients
+-----------
 
 1.  An Ansible controller, as I said before, I am using Ansible on WLS Ubuntu, which is out of the box with Windows 10.
 
@@ -103,6 +101,8 @@ Why do I need to use it?
     6.  SOA\_12.2.1.4\_V983383-01.zip -&gt; SOA 12.2.1.4 installer
 
     7.  V983368-01.zip -&gt; FMW 12.2.1.4 infrastructure
+
+    8. weblogic-deploy.zip -&gt; Weblogic Deploy Tooling release
 
 8.  I am using this home for **oracle** user **/u01/oracle/**
 
@@ -144,13 +144,13 @@ This role installs Java Development Kit, Oracle Weblogic 12.2.1.4 and Oracle SOA
 
 This role patches OPatch, Oracle SOA, Oracle Weblogic and Oracle Coherence.
 
-### rcu
+### certificates
 
-This role executes Repository Creation Utility (RCU) to create database schemas that are used by Oracle SOA 12.2.1.4.
+This role creates self-signed certificates and configure key stores, trust stores and SSL for the SOA domain.
 
 ### createsoadomain
 
-This role creates a SOA domain with the architecture explained at the beginning of this document.
+By using Weblogic Deploy Tooling, this role creates a SOA domain with the architecture explained at the beginning of this document. Importantly, Weblogic Deploy Tooling is also used to create RCU schemas.
 
 ### pack
 
@@ -164,21 +164,10 @@ This role unpacks the domain to distribute it from the AdminServer machine into 
 
 This role configures three node managers for AdminServer, soa\_server01 and soa\_server02 as Linux services.
 
-### certificates
-
-This role creates self-signed certificates and configure key stores, trust stores and SSL for the SOA domain.
-
-### configurenodemanager
-
-This role configures three node managers over SSL.
-
 ### configurewlst
 
 This role configures the file **wlst\_internal.sh** to allow using nmConnect over SSL.
 
-### configuredomainpkissl
-
-This role configures the SOA domain to use the certificates created by the role certificates. This role also updated the SSL configuration. These configurations are applied for the AdminServer and all the managed servers within the domain.
 
 How could I start services after executing site.yml?
 ----------------------------------------------------
@@ -218,3 +207,4 @@ You can contact me here complexsystemsblog@gmail.com
   [JMESPath]: https://jmespath.org/tutorial.html
   [2]: https://github.com/textanalyticsman/ansible-oracledb
   [3]: https://github.com/textanalyticsman/ansible-soa/blob/master/inventories/dev/group_vars/all/vault.yml
+  [Weblogic Deploy Tooling]: https://github.com/oracle/weblogic-deploy-tooling
