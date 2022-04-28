@@ -1,3 +1,7 @@
+### Do you need support with Weblogic, Weblogic Deploy Tooling, OSB, SOA, etc?
+
+You can contact me here complexsystemsblog@gmail.com
+
 Weblogic Deploy Tooling and Ansible to create a SOA 12.2.1.4 domain
 ===================================================================
 This document explains how to use Weblogic Deploy Tooling and a set of Ansible playbooks provided in this repository to install, patch and configure an Oracle SOA domain 12.2.1.4.
@@ -194,9 +198,6 @@ Finally use the Weblogic console to start managed servers; if everything goes we
 
 <img src="./images/media/image2.png" style="width:6.5in;height:2.99792in" />
 
-### Do you need support?
-
-You can contact me here complexsystemsblog@gmail.com
 
   [this]: https://github.com/oracle/weblogic-deploy-tooling/blob/master/site/discover.md
   [here]: https://github.com/textanalyticsman/ansible-soa/blob/master/inventories/dev/group_vars/all/configuration.yml
